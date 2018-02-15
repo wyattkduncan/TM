@@ -1,144 +1,151 @@
 import java.io.*;
-import java.time.*;
-import java.util.*;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 public class TM {
+	// main only used to pass args to appMain, gets rid of static issues
 	public static void main(String [] args) throws IOException {
 		TM tm = new TM();
-		tm.appDriver(args);
+		tm.appMain(args);
 	}
 	
-//where the program actually runs
-	void appDriver(String [] args) throws IOException {		
-		String cmd;
+	void appMain(String [] args) throws IOException {
+		
+		// Declare variables
+		String Command;
 		String taskName;
-		String description;		
-		TaskLog log = new TaskLog();		
+		String Data, Entry = null;
+		
+		TaskLog log = new TaskLog();
+		
 		LocalDateTime currentTime = LocalDateTime.now();
 		
 		try {		
-			cmd = args[0];
-			if (args.length < 2 && cmd.equals("summary"))
+			Command = args[0];
+			if (args.length < 2)
 				taskName = null;
 			else 
 				taskName = args[1];
-			if (args[0].equals("describe")) {
-					description = args[2];
+			if (args[0].equals("describe") || args[0].equals("size")) {
+				Data = args[2];
+				if (args.length == 4)
+					Entry = args[3];				
 			}
 			else 
-				description = null;		
-		}//end Try
+				Data = null;		
+		}
 		catch (ArrayIndexOutOfBoundsException ex) {
 			System.out.println("Usage:");
 			System.out.println("\tTM start <task name>");
 			System.out.println("\tTM stop <task name>");
-			System.out.println("\tTM describe <task name> <task description in quotes>");
+			System.out.println("\tTM describe <task name> <task description in quotes> <(optional)task size XS-XXL>");
+			System.out.println("\tTM size <task name> <task size XS-XXL>");
 			System.out.println("\tTM summary <task name>");
 			System.out.println("\tTM summary");
 			return;
-		}//end catch 
+		}
 		
-// switch for different operations
-		switch (cmd) {
-			case "stop": cmdStop(taskName, log, cmd, currentTime);
+		switch (Command) {
+			case "stop": CommandStop(taskName, log, Command, currentTime);
 						break;
-			case "start": cmdStart(taskName, log, cmd, currentTime);
+			case "start": CommandStart(taskName, log, Command, currentTime);
 						break;
-			case "describe": cmdDescribe(taskName, log, cmd, currentTime, description);
+			case "describe": CommandDescribe(taskName, log, Command, currentTime, Data, Entry);
+						break;
+			case "size": CommandDescribe(taskName, log, Command, currentTime, Data, Entry);
 						break;
 			case "summary": if (taskName == null)
-								cmdSummary(log);
+								CommandSummary(log);
 							else
-								cmdSummary(log, taskName);
+								CommandSummary(log, taskName);
 						break;
-		}//end switch
+		}
 		
-	}//end appDriver
+	}
 	
-	
-
-	void cmdStart(String taskName, TaskLog log, String cmd, LocalDateTime currentTime) throws IOException {
-		String line = (currentTime + "_" + taskName + "_" + cmd);
+	void CommandStart(String taskName, TaskLog log, String Command, LocalDateTime currentTime) throws IOException {
+		String line = (currentTime + "_" + taskName + "_" + Command);
 		log.writeLine(line);
-	}//end cmdStart
+	}
 	
-
-	void cmdStop(String taskName, TaskLog log, String cmd, LocalDateTime currentTime) throws IOException {
-		String line = (currentTime + "_" + taskName + "_" + cmd);
+	void CommandStop(String taskName, TaskLog log, String Command, LocalDateTime currentTime) throws IOException {
+		String line = (currentTime + "_" + taskName + "_" + Command);
 		log.writeLine(line);
-	}//end cmdStop
+	}
 	
-	void cmdDescribe(String taskName, TaskLog log, String cmd, LocalDateTime currentTime, String description) throws IOException {
-		String line = (currentTime + "_" + taskName + "_" + cmd + "_" + description);
+	void CommandDescribe(String taskName, TaskLog log, String Command, LocalDateTime currentTime, String Data, String Entry) throws IOException {
+		String line;
+		if(Entry != null)
+			line = (currentTime + "_" + taskName + "_" + Command + "_" + Data + "_" + Entry);
+		else
+			line = (currentTime + "_" + taskName + "_" + Command + "_" + Data);
 		log.writeLine(line);
-	}//end cmdDescribe
+	}
+	
+	void CommandSummary(TaskLog log) throws FileNotFoundException {
 
-
-//Summary for all tasks.
-	void cmdSummary(TaskLog log) throws FileNotFoundException {
-		
-		// Read log file, gather entries
 		LinkedList<TaskLogEntry> allLines = log.readFile();
-		
-		// Gather all task names from log entries, store in Tree Set. Tree set will sort tasks and prevent duplicate summaries for a single task.
 		TreeSet<String> names = new TreeSet<String>();
 		long totalTime = 0;
 		for (TaskLogEntry entry : allLines){
 			names.add(entry.taskName);	
 		}
-		
-		// Display each summary individually
-		System.out.println("\n--------------------| TASK LOG |--------------------");
+		System.out.println("\n###########[TASK LOG]##############");
 		for (String name : names) {
-			totalTime += cmdSummary(log, name);
+			totalTime += CommandSummary(log, name);
 		}
-		System.out.println("\n---------------------------------------------------- \nTotal time\t\t|" + TimeUtilities.secondsFormatter(totalTime));
-	}//end cmdSummary
-   
-   
-//summary for a single task
-	long cmdSummary(TaskLog log, String task) throws FileNotFoundException {
+		System.out.println("\n\nTotal time: \t\t|" + TimeUtilities.secondsFormatter(totalTime));
+	}
+	
+	long CommandSummary(TaskLog log, String task) throws FileNotFoundException {
 
-		// Read log file, gather entries
 		LinkedList<TaskLogEntry> allLines = log.readFile();
-		
-		// Create Task object based on task name, with entries from log
 		Task taskToSummarize = new Task(task, allLines);
-		
-		// Display 
 		System.out.println(taskToSummarize.toString());
+      
 		return taskToSummarize.totalTime;
+      /*
+      #####NOT SCALEABLE... WELL IT WORKED OK BUT WAS REALLY CLUNKY
+      +   void CommandSummary(String taskName, TaskLog log, LocalDateTime currentTime) throws IOException {
+		String line = (currentTime + " " + taskName + " Summary Taken");
+      
+		Scanner in = null;
+      File file = new File("TMlog.txt");
+      in = new Scanner(file);
+         while(in.hasNext())
+         {
+         String FileLine = in.nextLine();
+         if(FileLine.contains(taskName)){
+               if(FileLine.contains(" describe ")){
+               System.out.println(FileLine);
+              }
+         }
+       }
+      log.writeLine(line);
+         
+	}*/
 		
-	}//end cmdSummary
+	}
 	
 	
 	
 	public class TaskLog {
-		
-		// Create FileWriter and PrintWriter to write to log file
 		public FileWriter fwriter;
 		public PrintWriter outputFile;
 		
-		
-		/**
-		 * Constructor, creates file I/O objects
-		 */
 		public TaskLog() throws IOException{
 			fwriter = new FileWriter("TM.txt", true);
 			outputFile = new PrintWriter(fwriter);
 		}
 		
-
 		void writeLine(String line) throws IOException{
 			outputFile.println(line);
 			outputFile.close();
-		}//end writeLine		
+		}		
 		
-      
 		LinkedList<TaskLogEntry> readFile() throws FileNotFoundException {
-			
-			// Create LinkedList of TaskLogEntry objects to hold each entry in log file
+
 			LinkedList<TaskLogEntry> lineList = new LinkedList<TaskLogEntry>();
 			
 			// Open file for reading
@@ -153,31 +160,28 @@ public class TM {
 				StringTokenizer st = new StringTokenizer(inLine, "_");
 				entry.timeStamp = LocalDateTime.parse(st.nextToken());
 				entry.taskName = st.nextToken();
-				entry.cmd = st.nextToken();
-				// If there are more than 3 tokens, 4th token is description
+				entry.Command = st.nextToken();
+				// If Command is describe, data is description, if Command is size, data is size.
 				if (st.hasMoreTokens())
-					entry.description = st.nextToken();
-				
-				// Add entry to LinkedList
+					entry.Data = st.nextToken();
+				if (st.hasMoreTokens())
+					entry.Entry = st.nextToken();
 				lineList.add(entry);
 			}
-			
-			// Close Scanner and return LinkedList
 			inputFile.close();
 			return lineList;
-		}//end LinkedList<TaskLogEntry>
-	}//end taskLog
+		}
+	}
 	
-//simple data container class used to hold the values necesary for a log entry
 	class TaskLogEntry {
-		String cmd;
+		String Command;
 		String taskName;
-		String description;
+		String Data;
+		String Entry;
 		LocalDateTime timeStamp;
 		
 	}
 	
-	// The TimeUtilities class contains utilities for working with time related data, borrowed from Lecture Help
 	static class TimeUtilities {
 		
 		 static String secondsFormatter(long secondsToFormat) {
@@ -189,26 +193,24 @@ public class TM {
 			return formattedTime;
 			
 		}
-	}//end TimeUtilities
+	}
 	
 	class Task {
-		// Each task can be identified by name
 		private String name;
-		private String description;
+		private StringBuilder description = new StringBuilder("");
+		private String shirtSize;
 		private String formattedTime = null;
 		private long totalTime = 0;
 		
-//collects all data from a given task using our linked list
 		public Task(String name, LinkedList<TaskLogEntry> entries) {
 			this.name = name;
-			this.description = null;
 			LocalDateTime lastStart = null;
 			long timeElapsed = 0;
 			
 			
 			for (TaskLogEntry entry : entries){
 				if (entry.taskName.equals(name)) {
-					switch (entry.cmd) {
+					switch (entry.Command) {
 					case "start":
 						lastStart = entry.timeStamp;
 						break;
@@ -218,17 +220,27 @@ public class TM {
 						lastStart = null;
 						break;
 					case "describe": 
-						description = entry.description;
+						if (description.toString().equals(""))
+							description.append(entry.Data);
+						else
+							description.append("\n\t\t\t| " + entry.Data);
+						
+						// Only update shirtSize if not empty to prevent unwanted update
+						if (entry.Entry != null)
+							shirtSize = entry.Entry;
+						break;
+					case "size": 
+						shirtSize = entry.Data;
 					}
 				}
 			}
-			// Format the elapsed time, parse to String, store long time for cmdSummary
+			// Format the elapsed time, parse to String, store long time for CommandSummary
 			this.formattedTime = TimeUtilities.secondsFormatter(timeElapsed);
 			this.totalTime = timeElapsed;
-		}//end Task Constructor
+		}
 		
-		public String toString() {
-			String str = ("\nSummary for task:\t| " + this.name + "\nDescription:\t\t| " + this.description + "\nDuration\t\t| " + this.formattedTime);
+		public String toString() { 
+			String str = ("\nSummary for task:\t| " + this.name + "\nDescription of task:\t| " + this.description + "\nSize:\t\t\t| " + this.shirtSize + "\nDuration\t\t| " + this.formattedTime);
 			return str;
 		}
 		
@@ -236,11 +248,5 @@ public class TM {
 			long duration = ChronoUnit.SECONDS.between(startTime, stopTime);
 			return duration;
 		}
-	}//end Task Class
-}//end TM
-
-//-If multiple descriptions are entered, only most recent is used
-
-
-
-
+	}
+}
