@@ -4,7 +4,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 public class TM {
-	// main only used to pass args to appMain, gets rid of static issues
 	public static void main(String [] args) throws IOException {
 		TM tm = new TM();
 		tm.appMain(args);
@@ -12,10 +11,10 @@ public class TM {
 	
 	void appMain(String [] args) throws IOException {
 		
-		// Declare variables
 		String Command;
 		String taskName;
-		String Data, Entry = null;
+		String Data;
+      String Entry = null;
 		
 		TaskLog log = new TaskLog();
 		
@@ -55,6 +54,8 @@ public class TM {
 						break;
 			case "size": CommandDescribe(taskName, log, Command, currentTime, Data, Entry);
 						break;
+         case "delete": CommandDelete(taskName);
+						break;
 			case "summary": if (taskName == null)
 								CommandSummary(log);
 							else
@@ -82,6 +83,52 @@ public class TM {
 			line = (currentTime + "_" + taskName + "_" + Command + "_" + Data);
 		log.writeLine(line);
 	}
+   static void CommandDelete(String taskName)
+    {
+        File fileToBeModified = new File("TM.txt");
+        String newString = "<REDACTED>";
+        String oldContent = "";
+        BufferedReader reader = null;       
+        FileWriter writer = null;
+        try
+        {
+            reader = new BufferedReader(new FileReader(fileToBeModified));
+            //Reading all the lines of input text file into oldContent
+            String line = reader.readLine();
+            while (line != null) 
+            {
+                oldContent = oldContent + line + System.lineSeparator();
+                line = reader.readLine();
+            }
+            //Replacing taskName with newString in the oldContent
+            String newContent = oldContent.replaceAll(taskName, newString);
+            //Rewriting the input text file with newContent
+            writer = new FileWriter(fileToBeModified);
+            writer.write(newContent);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        finally
+        {
+            try
+            {
+                //Closing the resources
+                reader.close();
+                writer.close();
+            } 
+            catch (IOException e) 
+            {
+                e.printStackTrace();
+            }
+         }   
+}//end delete
+   /*void CommandDelete(String taskName, TaskLog log, String Command, LocalDateTime currentTime, String Data, String Entry) throws IOException {
+		String line;
+	   line = (currentTime + "_" + taskName + "_" + Command + "_" + Data + "_" + Entry);
+		log.writeLine(line);
+	}*/
 	
 	void CommandSummary(TaskLog log) throws FileNotFoundException {
 
@@ -152,7 +199,6 @@ public class TM {
 			File logFile = new File("TM.txt");
 			Scanner inputFile = new Scanner(logFile);
 			
-			// Process each line in the string
 			String inLine;
 			while(inputFile.hasNextLine()) {
 				TaskLogEntry entry = new TaskLogEntry();
@@ -168,6 +214,7 @@ public class TM {
 					entry.Entry = st.nextToken();
 				lineList.add(entry);
 			}
+         //close the file
 			inputFile.close();
 			return lineList;
 		}
@@ -198,7 +245,7 @@ public class TM {
 	class Task {
 		private String name;
 		private StringBuilder description = new StringBuilder("");
-		private String shirtSize;
+		private String taskSize;
 		private String formattedTime = null;
 		private long totalTime = 0;
 		
@@ -225,12 +272,11 @@ public class TM {
 						else
 							description.append("\n\t\t\t| " + entry.Data);
 						
-						// Only update shirtSize if not empty to prevent unwanted update
 						if (entry.Entry != null)
-							shirtSize = entry.Entry;
+							taskSize = entry.Entry;
 						break;
 					case "size": 
-						shirtSize = entry.Data;
+						taskSize = entry.Data;
 					}
 				}
 			}
@@ -240,7 +286,7 @@ public class TM {
 		}
 		
 		public String toString() { 
-			String str = ("\nSummary for task:\t| " + this.name + "\nDescription of task:\t| " + this.description + "\nSize:\t\t\t| " + this.shirtSize + "\nDuration\t\t| " + this.formattedTime);
+			String str = ("\nSummary for task:\t| " + this.name + "\nDescription of task:\t| " + this.description + "\nSize:\t\t\t| " + this.taskSize + "\nDuration\t\t| " + this.formattedTime);
 			return str;
 		}
 		
