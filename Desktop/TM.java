@@ -1,89 +1,196 @@
-import java.io.*;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.io.IOException;
+import java.util.Set;
+
+/*delete this later
+      +   void CommandSummary(String taskName, TaskLog log, LocalDateTime currentTime) throws IOException {
+		String line = (currentTime + " " + taskName + " Summary Taken");
+      
+		Scanner in = null;
+      File file = new File("TMlog.txt");
+      in = new Scanner(file);
+         while(in.hasNext())
+         {
+         String FileLine = in.nextLine();
+         if(FileLine.contains(taskName)){
+               if(FileLine.contains(" describe ")){
+               System.out.println(FileLine);
+              }
+         }*/
 
 public class TM {
-	public static void main(String [] args) throws IOException {
-		TM tm = new TM();
-		tm.appMain(args);
+	public static void main(String[] args) throws IOException {
+		
+		ITMModel tmModel = new TMModel();
+		String cmd, Entry, taskName;
+		
+		try {
+			cmd = args[0];
+			if (args.length < 2)
+				taskName = null;
+			else 
+				taskName = args[1];
+			if (args[0].equals("describe") || args[0].equals("size") || args[0].equals("rename")) {
+				Entry = args[2];				
+			}
+			else 
+				Entry = null;		
+		}
+		catch (ArrayIndexOutOfBoundsException ex) {
+		   System.out.println("Usage:");
+			System.out.println("Usage:");
+			System.out.println("\tTM start <task name>");
+			System.out.println("\tTM stop <task name>");
+			System.out.println("\tTM describe <task name> <task description in quotes>");
+			System.out.println("\tTM size <task name> <task size XS-XXL>");
+			System.out.println("\tTM delete <task name>");
+			System.out.println("\tTM rename <task name> <new name>");
+			System.out.println("\tTM summary <task name>");
+			System.out.println("\tTM summary");
+			return;
+		}
+
+		switch (cmd) {
+			case "stop": tmModel.stopTask(taskName);
+						break;
+			case "start": tmModel.startTask(taskName);
+						break;
+			case "describe": tmModel.describeTask(taskName, Entry);
+						break;
+			case "size": tmModel.sizeTask(taskName, Entry);
+						break;
+			case "delete": tmModel.deleteTask(taskName);
+						break;
+			case "rename": tmModel.renameTask(taskName, Entry);
+						break;			
+			case "summary": if (taskName == null)
+								summary(tmModel);
+							else {
+								summary(tmModel, taskName);
+								break;
+							}	
+		}
 	}
 	
-	void appMain(String [] args) throws IOException {
+	public static void summary(ITMModel tmModel, String taskName) {
+		String str = ("\nSummary for task:\t| " + taskName +
+				"\nSize:\t\t\t| " + tmModel.taskSize(taskName) +
+				"\nDuration\t\t| " + tmModel.taskElapsedTime(taskName) +
+				"\nDescription:\n" + tmModel.taskDescription(taskName) + "\n");
+		System.out.println(str);
+	}
+	
+	public static void summary(ITMModel tmModel) {
+		Set<String> taskNames = tmModel.taskNames();
+		Set<String> taskSizes = tmModel.taskSizes();
+		System.out.println("\n###############################| TASK LOG |#################################");
+		for (String name : taskNames) {
+			// Ignores deleted tasks
+			if (name.contains("<REDACTED>"))
+				continue;
+			
+			summary(tmModel, name);
+		}
+		System.out.println("-----------------------------------");
+		String str = ("Total Time:\t\t| " + tmModel.elapsedTimeForAllTasks() +
+					"\n");
+		System.out.println(str);
+		System.out.println("\n SUMMARY FOR TASKS WITH SIZES");
+		for (String size : taskSizes) {
+			Set<String> taskNamesForSize = tmModel.taskNamesForSize(size);
+			if (taskNamesForSize.size() > 1) {
+				System.out.println("Size:\t\t\t| " + size);
+				System.out.println("Task Names:\t\t| " + taskNamesForSize);
+				System.out.println("Min time:\t\t| " + tmModel.minTimeForSize(size));
+				System.out.println("Avg time:\t\t| " + tmModel.avgTimeForSize(size));
+				System.out.println("Max time:\t\t| " + tmModel.maxTimeForSize(size) + "\n");
+			}
+		}
+	}
+}
+
+/*import java.io.IOException;
+import java.util.Set;
+
+
+public class TM {
+	public static void main(String[] args) throws IOException {
 		
-		String Command;
+		ITMModel tmModel = new TMModel();
+		String cmd;
 		String taskName;
-		String Data;
-      String Entry = null;
+		String Entry;
 		
-		TaskLog log = new TaskLog();
-		
-		LocalDateTime currentTime = LocalDateTime.now();
-		
-		try {		
-			Command = args[0];
+		try {
+			cmd = args[0];
 			if (args.length < 2)
 				taskName = null;
 			else 
 				taskName = args[1];
 			if (args[0].equals("describe") || args[0].equals("size")) {
-				Data = args[2];
-				if (args.length == 4)
-					Entry = args[3];				
+				Entry = args[2];				
 			}
 			else 
-				Data = null;		
+				Entry = null;		
 		}
 		catch (ArrayIndexOutOfBoundsException ex) {
+		
 			System.out.println("Usage:");
 			System.out.println("\tTM start <task name>");
 			System.out.println("\tTM stop <task name>");
-			System.out.println("\tTM describe <task name> <task description in quotes> <(optional)task size XS-XXL>");
+			System.out.println("\tTM describe <task name> <task description in quotes>");
 			System.out.println("\tTM size <task name> <task size XS-XXL>");
+			System.out.println("\tTM delete <task name>");
+			System.out.println("\tTM rename <task name> <new name>");
 			System.out.println("\tTM summary <task name>");
 			System.out.println("\tTM summary");
 			return;
 		}
 		
-		switch (Command) {
-			case "stop": CommandStop(taskName, log, Command, currentTime);
+		// switch to direct operation
+		switch (cmd) {
+			case "stop": tmModel.stopTask(taskName);
 						break;
-			case "start": CommandStart(taskName, log, Command, currentTime);
+			case "start": tmModel.startTask(taskName);
 						break;
-			case "describe": CommandDescribe(taskName, log, Command, currentTime, Data, Entry);
+			case "describe": tmModel.describeTask(taskName, Entry);
 						break;
-			case "size": CommandDescribe(taskName, log, Command, currentTime, Data, Entry);
+			case "size": tmModel.sizeTask(taskName, Entry);
 						break;
-         case "delete": CommandDelete(taskName);
+			case "delete": tmModel.deleteTask(taskName);
 						break;
+			case "rename": tmModel.renameTask(taskName, Entry);
+						break;			
 			case "summary": if (taskName == null)
-								CommandSummary(log);
-							else
-								CommandSummary(log, taskName);
-						break;
+								summary(tmModel);
+							else {
+								summary(tmModel, taskName);
+								break;
+							}	
 		}
-		
 	}
 	
-	void CommandStart(String taskName, TaskLog log, String Command, LocalDateTime currentTime) throws IOException {
-		String line = (currentTime + "_" + taskName + "_" + Command);
-		log.writeLine(line);
+	public static void summary(ITMModel tmModel, String taskName) {
+		String str = ("\nSummary for task:\t| " + taskName +
+				"\nSize:\t\t\t| " + tmModel.taskSize(taskName) +
+				"\nDuration\t\t| " + tmModel.taskElapsedTime(taskName) +
+				"\nDescription:\n" + tmModel.taskDescription(taskName) );
+		System.out.println(str);
 	}
 	
-	void CommandStop(String taskName, TaskLog log, String Command, LocalDateTime currentTime) throws IOException {
-		String line = (currentTime + "_" + taskName + "_" + Command);
-		log.writeLine(line);
+	public static void summary(ITMModel tmModel) {
+		Set<String> taskNames = tmModel.taskNames();
+		Set<String> taskSizes = tmModel.taskSizes();
+		//Set<String> namesForSizes = tmModel.taskNamesForSize(size); 
+		for (String name : taskNames) {
+			summary(tmModel, name);
+		}
+		String str = ("\nTotal Time:\t\t|" + tmModel.elapsedTimeForAllTasks() +
+					"\n");
+		System.out.println(str);
 	}
-	
-	void CommandDescribe(String taskName, TaskLog log, String Command, LocalDateTime currentTime, String Data, String Entry) throws IOException {
-		String line;
-		if(Entry != null)
-			line = (currentTime + "_" + taskName + "_" + Command + "_" + Data + "_" + Entry);
-		else
-			line = (currentTime + "_" + taskName + "_" + Command + "_" + Data);
-		log.writeLine(line);
-	}
-   static void CommandDelete(String taskName)
+}
+
+/*static void CommandDelete(String taskName)
     {
         File fileToBeModified = new File("TM.txt");
         String newString = "<REDACTED>";
@@ -122,177 +229,12 @@ public class TM {
             {
                 e.printStackTrace();
             }
-         }   
-}//end delete
-   /*void CommandDelete(String taskName, TaskLog log, String Command, LocalDateTime currentTime, String Data, String Entry) throws IOException {
-		String line;
-	   line = (currentTime + "_" + taskName + "_" + Command + "_" + Data + "_" + Entry);
-		log.writeLine(line);
-	}*/
-	
-	void CommandSummary(TaskLog log) throws FileNotFoundException {
-
-		LinkedList<TaskLogEntry> allLines = log.readFile();
-		TreeSet<String> names = new TreeSet<String>();
-		long totalTime = 0;
-		for (TaskLogEntry entry : allLines){
-			names.add(entry.taskName);	
-		}
-		System.out.println("\n###########[TASK LOG]##############");
-		for (String name : names) {
-			totalTime += CommandSummary(log, name);
-		}
-		System.out.println("\n\nTotal time: \t\t|" + TimeUtilities.secondsFormatter(totalTime));
-	}
-	
-	long CommandSummary(TaskLog log, String task) throws FileNotFoundException {
-
-		LinkedList<TaskLogEntry> allLines = log.readFile();
-		Task taskToSummarize = new Task(task, allLines);
-		System.out.println(taskToSummarize.toString());
+           }
+         }//end rename
+*/   
+ /*
       
-		return taskToSummarize.totalTime;
-      /*
-      #####NOT SCALEABLE... WELL IT WORKED OK BUT WAS REALLY CLUNKY
-      +   void CommandSummary(String taskName, TaskLog log, LocalDateTime currentTime) throws IOException {
-		String line = (currentTime + " " + taskName + " Summary Taken");
-      
-		Scanner in = null;
-      File file = new File("TMlog.txt");
-      in = new Scanner(file);
-         while(in.hasNext())
-         {
-         String FileLine = in.nextLine();
-         if(FileLine.contains(taskName)){
-               if(FileLine.contains(" describe ")){
-               System.out.println(FileLine);
-              }
-         }
        }
       log.writeLine(line);
          
 	}*/
-		
-	}
-	
-	
-	
-	public class TaskLog {
-		public FileWriter fwriter;
-		public PrintWriter outputFile;
-		
-		public TaskLog() throws IOException{
-			fwriter = new FileWriter("TM.txt", true);
-			outputFile = new PrintWriter(fwriter);
-		}
-		
-		void writeLine(String line) throws IOException{
-			outputFile.println(line);
-			outputFile.close();
-		}		
-		
-		LinkedList<TaskLogEntry> readFile() throws FileNotFoundException {
-
-			LinkedList<TaskLogEntry> lineList = new LinkedList<TaskLogEntry>();
-			
-			// Open file for reading
-			File logFile = new File("TM.txt");
-			Scanner inputFile = new Scanner(logFile);
-			
-			String inLine;
-			while(inputFile.hasNextLine()) {
-				TaskLogEntry entry = new TaskLogEntry();
-				inLine = inputFile.nextLine();
-				StringTokenizer st = new StringTokenizer(inLine, "_");
-				entry.timeStamp = LocalDateTime.parse(st.nextToken());
-				entry.taskName = st.nextToken();
-				entry.Command = st.nextToken();
-				// If Command is describe, data is description, if Command is size, data is size.
-				if (st.hasMoreTokens())
-					entry.Data = st.nextToken();
-				if (st.hasMoreTokens())
-					entry.Entry = st.nextToken();
-				lineList.add(entry);
-			}
-         //close the file
-			inputFile.close();
-			return lineList;
-		}
-	}
-	
-	class TaskLogEntry {
-		String Command;
-		String taskName;
-		String Data;
-		String Entry;
-		LocalDateTime timeStamp;
-		
-	}
-	
-	static class TimeUtilities {
-		
-		 static String secondsFormatter(long secondsToFormat) {
-			
-			long hours = (secondsToFormat / 3600);
-			long minutes = ((secondsToFormat % 3600) / 60);
-			long seconds = (secondsToFormat % 60);
-			String formattedTime = (String.format("%02d:%02d:%02d", hours, minutes, seconds));
-			return formattedTime;
-			
-		}
-	}
-	
-	class Task {
-		private String name;
-		private StringBuilder description = new StringBuilder("");
-		private String taskSize;
-		private String formattedTime = null;
-		private long totalTime = 0;
-		
-		public Task(String name, LinkedList<TaskLogEntry> entries) {
-			this.name = name;
-			LocalDateTime lastStart = null;
-			long timeElapsed = 0;
-			
-			
-			for (TaskLogEntry entry : entries){
-				if (entry.taskName.equals(name)) {
-					switch (entry.Command) {
-					case "start":
-						lastStart = entry.timeStamp;
-						break;
-					case "stop":
-						if (lastStart != null) 
-							timeElapsed += calculateDuration(lastStart, entry.timeStamp);
-						lastStart = null;
-						break;
-					case "describe": 
-						if (description.toString().equals(""))
-							description.append(entry.Data);
-						else
-							description.append("\n\t\t\t| " + entry.Data);
-						
-						if (entry.Entry != null)
-							taskSize = entry.Entry;
-						break;
-					case "size": 
-						taskSize = entry.Data;
-					}
-				}
-			}
-			// Format the elapsed time, parse to String, store long time for CommandSummary
-			this.formattedTime = TimeUtilities.secondsFormatter(timeElapsed);
-			this.totalTime = timeElapsed;
-		}
-		
-		public String toString() { 
-			String str = ("\nSummary for task:\t| " + this.name + "\nDescription of task:\t| " + this.description + "\nSize:\t\t\t| " + this.taskSize + "\nDuration\t\t| " + this.formattedTime);
-			return str;
-		}
-		
-		long calculateDuration(LocalDateTime startTime, LocalDateTime stopTime) {
-			long duration = ChronoUnit.SECONDS.between(startTime, stopTime);
-			return duration;
-		}
-	}
-}
